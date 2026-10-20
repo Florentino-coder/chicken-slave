@@ -25,6 +25,38 @@ test('the pile stacks every play in the trick and clears when a new pile starts'
   expect(clearedAfterStack).toBe(true);
 });
 
+test('the pile never shows "X played" without its cards', async ({ browser }) => {
+  const page = await newGuest(browser);
+  await createRoom(page, { name: 'Watcher' });
+  await startGame(page);
+
+  // Sample in the page: a pile line with no visible trick cards for over 1.2s means the pile got lost.
+  await page.evaluate(() => {
+    const w = window as unknown as { __lost: string[]; __since: number };
+    w.__lost = [];
+    w.__since = 0;
+    setInterval(() => {
+      const pile = document.querySelector('[data-testid=pile]');
+      const line = pile?.querySelector(':scope > p')?.textContent ?? '';
+      const shown = [...(pile?.querySelectorAll('[data-testid=trick-play]') ?? [])].some(
+        (el) => Number(getComputedStyle(el.closest('[data-testid=trick]')!).opacity) > 0.5,
+      );
+      if (line && !shown) {
+        w.__since ||= Date.now();
+        if (Date.now() - w.__since > 1200) w.__lost.push(line);
+      } else w.__since = 0;
+    }, 100);
+  });
+
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    if ((await page.getByTestId('round-summary').count()) > 0) break;
+    await step(page);
+    await page.waitForTimeout(50);
+  }
+  expect(await page.evaluate(() => (window as unknown as { __lost: string[] }).__lost)).toEqual([]);
+});
+
 test('an unplayable selection explains why the play button is disabled', async ({ browser }) => {
   const page = await newGuest(browser);
   await createRoom(page, { name: 'Reasoner' });
