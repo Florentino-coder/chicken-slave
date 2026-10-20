@@ -8,6 +8,7 @@ export interface Toast {
 }
 
 export interface AppState {
+  lang: 'th' | 'en';
   guest: { guestId: string; name: string } | null;
   connected: boolean;
   room: RoomView | null;
@@ -17,7 +18,16 @@ export interface AppState {
   toasts: Toast[];
 }
 
+function storedLang(): 'th' | 'en' {
+  try {
+    return localStorage.getItem('slave:lang') === 'en' ? 'en' : 'th';
+  } catch {
+    return 'th';
+  }
+}
+
 let state: AppState = {
+  lang: storedLang(),
   guest: null,
   connected: false,
   room: null,

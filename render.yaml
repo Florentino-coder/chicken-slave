@@ -1,7 +1,7 @@
 # One instance only: room state lives in memory (see README "Scaling").
 services:
   - type: web
-    name: slave-card-game
+    name: chicken-slave
     runtime: docker
     plan: free
     healthCheckPath: /api/health

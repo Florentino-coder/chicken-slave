@@ -1,6 +1,8 @@
-# สลาฟ ออนไลน์ (Slave card game)
+# Chicken Slave
 
-เว็บเกมไพ่สลาฟแบบเรียลไทม์ เล่นได้ทันทีโดยไม่ต้องสมัครหรือล็อกอิน
+เว็บเกมไพ่สลาฟแบบเรียลไทม์ เล่นได้ทันทีโดยไม่ต้องสมัครหรือล็อกอิน รองรับภาษาไทย (ค่าเริ่มต้น) และภาษาอังกฤษ
+
+By Florentino
 
 ## เริ่มใช้งาน
 
@@ -30,9 +32,10 @@ npx tsx apps/server/test/load.ts   # 100 rooms x 4 sockets load test
 
 ```
 packages/engine   Pure TypeScript rules: cards, combos, game state machine, bots
-packages/shared   Socket event names, zod payload schemas, view types, Thai error text
+packages/shared   Socket event names, zod payload schemas, view types
 apps/server       Express + socket.io: guest tokens, rooms, matchmaking, timers, bots
-apps/web          Vite + React + Tailwind client
+apps/web          Vite + React + Tailwind client (i18n in src/i18n.ts, icons in src/icons/paths.ts)
+design            Lacquer Court icon set, logo, specimen sheet (node design/build-icons.mjs)
 e2e               Playwright tests
 ```
 

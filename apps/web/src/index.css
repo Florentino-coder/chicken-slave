@@ -1,11 +1,12 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-felt: #0b5d3b;
-  --color-felt-dark: #073d27;
+  --color-felt: #0d3a27;
+  --color-felt-dark: #06140e;
   --color-ink: #0f172a;
-  --color-gold: #f5c542;
-  --font-sans: 'Noto Sans Thai', 'Sarabun', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --color-gold: #e7c45c;
+  --color-cinnabar: #c8402e;
+  --font-sans: 'Prompt', 'Leelawadee UI', system-ui, sans-serif;
 }
 
 html,
@@ -19,21 +20,28 @@ body {
   background: radial-gradient(ellipse at center, var(--color-felt) 0%, var(--color-felt-dark) 75%);
   color: #f8fafc;
   font-family: var(--font-sans);
+  font-weight: 300;
+  letter-spacing: 0.01em;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
 
 .panel {
   background: rgb(0 0 0 / 0.28);
-  border: 1px solid rgb(255 255 255 / 0.12);
+  border: 1px solid rgb(231 196 92 / 0.16);
   border-radius: 1rem;
   backdrop-filter: blur(6px);
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   border-radius: 0.75rem;
   padding: 0.6rem 1.1rem;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   transition: transform 0.08s, opacity 0.15s, background 0.15s;
   touch-action: manipulation;
 }
@@ -49,8 +57,9 @@ body {
   color: #1f1500;
 }
 .btn-ghost {
-  background: rgb(255 255 255 / 0.1);
-  color: #fff;
+  background: rgb(255 255 255 / 0.08);
+  border: 1px solid rgb(231 196 92 / 0.18);
+  color: #f3ecdb;
 }
 .btn-danger {
   background: #dc2626;

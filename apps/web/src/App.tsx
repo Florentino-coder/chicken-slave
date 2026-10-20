@@ -5,8 +5,10 @@ import { useStore } from './store';
 import Home from './pages/Home';
 import RoomPage from './pages/RoomPage';
 import Toasts from './components/Toasts';
+import { useT } from './i18n';
 
 export default function App() {
+  const t = useT();
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const roomCode = useStore((s) => s.room?.code ?? null);
@@ -31,15 +33,15 @@ export default function App() {
     return (
       <div className="flex h-full items-center justify-center p-6 text-center">
         <div className="panel p-6">
-          <p className="mb-4">เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ</p>
+          <p className="mb-4">{t('app.connectFailed')}</p>
           <button className="btn btn-primary" onClick={() => window.location.reload()}>
-            ลองใหม่
+            {t('app.retry')}
           </button>
         </div>
       </div>
     );
   }
-  if (!ready) return <div className="flex h-full items-center justify-center opacity-70">กำลังโหลด…</div>;
+  if (!ready) return <div className="flex h-full items-center justify-center opacity-70">{t('app.loading')}</div>;
 
   return (
     <>

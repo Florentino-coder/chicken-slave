@@ -4,13 +4,13 @@ import { createRoom, handCards, newGuest, setHomeName, startGame } from './helpe
 test('quick play fills the table with 3 bots after QUICK_WAIT_MS', async ({ browser }) => {
   const page = await newGuest(browser);
   await setHomeName(page, 'Quicky');
-  await page.getByRole('button', { name: '⚡ เล่นด่วน (Quick Play)' }).click();
+  await page.getByRole('button', { name: 'เล่นด่วน' }).click();
   await expect(page.getByText(/กำลังหาผู้เล่น/)).toBeVisible();
   await expect(page.getByTestId('table')).toBeVisible({ timeout: 15_000 });
   await expect(page).toHaveURL(/\/r\/[A-Z0-9]{6}$/);
   const opponents = page.getByTestId('opponent');
   await expect(opponents).toHaveCount(3);
-  for (const o of await opponents.all()) await expect(o).toContainText('🤖');
+  for (const o of await opponents.all()) await expect(o.getByRole('img', { name: 'บอท' })).toBeVisible();
   await expect(page.getByTestId('hand').locator('[data-card]')).toHaveCount(13);
 });
 
@@ -93,14 +93,14 @@ test('mobile 375x812: table fits without horizontal scroll and actions are visib
   await startGame(page);
   await expect(page.getByTestId('hand').locator('[data-card]')).toHaveCount(13);
   await expect(page.getByTestId('status')).toHaveText(/^ตาคุณ/, { timeout: 20_000 });
-  await page.getByRole('button', { name: '💡' }).click(); // select something so the play button shows its label
+  await page.getByRole('button', { name: 'คำใบ้' }).click(); // select something so the play button shows its label
 
   const { scrollWidth, innerWidth } = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     innerWidth: window.innerWidth,
   }));
   expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
-  for (const name of ['ผ่าน', '💡', 'ล้างที่เลือก']) {
+  for (const name of ['ผ่าน', 'คำใบ้', 'ล้างที่เลือก']) {
     await expect(page.getByRole('button', { name, exact: true })).toBeInViewport({ ratio: 1 });
   }
   await expect(page.getByRole('button', { name: /^ลงไพ่/ })).toBeInViewport({ ratio: 1 });

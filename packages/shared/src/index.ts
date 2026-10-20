@@ -100,27 +100,4 @@ export interface S2CEvents {
   error: (e: { message: string }) => void;
 }
 
-export const ERROR_TEXT_TH: Record<string, string> = {
-  not_your_turn: 'ยังไม่ถึงตาคุณ',
-  not_in_hand: 'ไม่มีไพ่ใบนี้ในมือ',
-  invalid_combo: 'รูปแบบไพ่ไม่ถูกต้อง',
-  cannot_beat: 'ไพ่ไม่ใหญ่กว่ากองกลาง',
-  must_include_3c: 'ตาแรกต้องลงไพ่ที่มี 3♣',
-  cannot_pass_lead: 'คุณเป็นคนเปิดกอง ต้องลงไพ่',
-  bad_phase: 'ยังทำแบบนี้ไม่ได้ตอนนี้',
-  bad_count: 'จำนวนไพ่ไม่ถูกต้อง',
-  no_exchange: 'คุณไม่ต้องแลกไพ่',
-  stale: 'สถานะเกมเปลี่ยนแล้ว ลองอีกครั้ง',
-  rate_limited: 'ส่งเร็วเกินไป',
-  room_not_found: 'ไม่พบห้อง',
-  room_full: 'ห้องเต็ม',
-  wrong_password: 'รหัสผ่านไม่ถูกต้อง',
-  already_playing: 'เกมเริ่มไปแล้ว',
-  not_host: 'เฉพาะเจ้าของห้อง',
-  not_in_room: 'คุณไม่ได้อยู่ในห้อง',
-  not_ready: 'ผู้เล่นยังไม่พร้อมทุกคน',
-  bad_request: 'ข้อมูลไม่ถูกต้อง',
-  unauthorized: 'เซสชันหมดอายุ รีเฟรชหน้า',
-};
-
 export type { PlayerView, Settings, BotLevel };

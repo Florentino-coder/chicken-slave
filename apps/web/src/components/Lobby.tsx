@@ -2,18 +2,17 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { RoomView, Settings } from '@slave/shared';
 import { act } from '../net';
+import { MessageKey, useT } from '../i18n';
 import { toast, useStore } from '../store';
 import RulesSheet from './RulesSheet';
 import Chat from './Chat';
+import Icon, { LogoMark, Signature } from './Icon';
+import LangToggle from './LangToggle';
 
-const TOGGLES: { key: keyof Settings; label: string; hint: string }[] = [
-  { key: 'passLock', label: 'ผ่านแล้วลงซ้ำไม่ได้', hint: 'จนกว่าจะเปิดกองใหม่' },
-  { key: 'allowStraights', label: 'ลงเรียงได้', hint: 'ตั้งแต่ 3 ใบขึ้นไป ห้ามมี 2' },
-  { key: 'revolution', label: 'ปฏิวัติ', hint: 'ลงโฟร์แล้วลำดับไพ่กลับด้าน' },
-  { key: 'noTwoFinish', label: 'ห้ามจบด้วย 2', hint: 'จบด้วย 2 จะตกไปท้ายสุด' },
-];
+const TOGGLES: (keyof Settings)[] = ['passLock', 'allowStraights', 'revolution', 'noTwoFinish'];
 
 export default function Lobby({ room }: { room: RoomView }) {
+  const t = useT();
   const me = useStore((s) => s.guest?.guestId);
   const navigate = useNavigate();
   const [rules, setRules] = useState(false);
@@ -26,11 +25,11 @@ export default function Lobby({ room }: { room: RoomView }) {
   async function copy() {
     try {
       if (navigator.share && /Mobi/i.test(navigator.userAgent)) {
-        await navigator.share({ title: 'มาเล่นสลาฟกัน', url: link });
+        await navigator.share({ title: t('lobby.shareTitle'), url: link });
         return;
       }
       await navigator.clipboard.writeText(link);
-      toast('คัดลอกลิงก์แล้ว');
+      toast(t('lobby.copied'));
     } catch {
       toast(link);
     }
@@ -47,65 +46,87 @@ export default function Lobby({ room }: { room: RoomView }) {
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 py-6">
       <header className="flex items-center justify-between gap-2">
         <button className="btn btn-ghost" onClick={leave}>
-          ← ออก
+          <Icon name="back" size={18} />
+          {t('lobby.leave')}
         </button>
-        <div className="text-center">
-          <p className="text-xs text-white/60">รหัสห้อง</p>
-          <p className="font-mono text-2xl font-bold tracking-[0.3em]" data-testid="room-code">
+        <div className="flex flex-col items-center text-center text-gold">
+          <LogoMark size={36} />
+          <p className="mt-1 text-[11px] uppercase tracking-[0.3em] text-white/60">{t('lobby.code')}</p>
+          <p className="font-mono text-2xl tracking-[0.3em]" data-testid="room-code">
             {room.code}
           </p>
         </div>
-        <button className="btn btn-ghost" onClick={() => setRules(true)}>
-          กติกา
-        </button>
+        <div className="flex gap-1.5">
+          <LangToggle compact />
+          <button className="btn btn-ghost px-2.5" onClick={() => setRules(true)} aria-label={t('lobby.rules')}>
+            <Icon name="help" size={18} />
+          </button>
+        </div>
       </header>
 
       <section className="panel p-4">
         <div className="flex flex-col gap-2 sm:flex-row">
-          <input className="input font-mono text-sm" readOnly value={link} aria-label="ลิงก์ชวนเพื่อน" />
+          <input className="input font-mono text-sm" readOnly value={link} aria-label={t('lobby.inviteLink')} />
           <button className="btn btn-primary shrink-0" onClick={copy}>
-            ชวนเพื่อน
+            <Icon name="link" size={18} />
+            {t('lobby.invite')}
           </button>
         </div>
-        {room.hasPassword && <p className="mt-2 text-xs text-white/60">🔒 ห้องนี้มีรหัสผ่าน</p>}
+        {room.hasPassword && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-white/60">
+            <Icon name="lock" size={14} />
+            {t('lobby.hasPassword')}
+          </p>
+        )}
       </section>
 
       <section className="panel p-4">
-        <h2 className="mb-3 font-semibold">
-          ผู้เล่น {filled}/{room.seats.length}
+        <h2 className="mb-3 flex items-center gap-2 font-medium">
+          <Icon name="users" size={18} className="text-gold" />
+          {t('lobby.players', { n: filled, max: room.seats.length })}
         </h2>
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {room.seats.map((s) => (
             <li key={s.seat} className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2" data-testid="seat">
               {s.name ? (
                 <>
-                  <span className="flex items-center gap-2 truncate">
-                    <span aria-hidden>{s.isBot ? '🤖' : s.guestId === room.hostId ? '👑' : '🙂'}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Icon
+                      name={s.isBot ? 'bot' : s.guestId === room.hostId ? 'host' : 'commoner'}
+                      size={18}
+                      className="text-gold"
+                    />
                     <span className="truncate">
                       {s.name}
-                      {s.guestId === me && <span className="text-white/50"> (คุณ)</span>}
+                      {s.guestId === me && <span className="text-white/50"> {t('lobby.you')}</span>}
                     </span>
-                    {!s.connected && <span className="text-xs text-amber-300">หลุด</span>}
+                    {!s.connected && (
+                      <span className="flex items-center gap-1 text-xs text-amber-300">
+                        <Icon name="offline" size={14} />
+                        {t('lobby.offline')}
+                      </span>
+                    )}
                   </span>
                   <span className="flex items-center gap-2">
                     {!s.isBot && (
-                      <span className={`text-xs ${s.ready ? 'text-emerald-300' : 'text-white/50'}`}>
-                        {s.ready ? 'พร้อม' : 'ยังไม่พร้อม'}
+                      <span className={`flex items-center gap-1 text-xs ${s.ready ? 'text-emerald-300' : 'text-white/50'}`}>
+                        {s.ready && <Icon name="check" size={14} />}
+                        {s.ready ? t('lobby.ready') : t('lobby.notReady')}
                       </span>
                     )}
                     {isHost && s.guestId !== me && (
                       <button
-                        className="rounded-lg px-2 text-white/60 hover:bg-white/10"
-                        aria-label={`เอา ${s.name} ออก`}
+                        className="rounded-lg p-1 text-white/60 hover:bg-white/10"
+                        aria-label={t('lobby.remove', { name: s.name })}
                         onClick={() => act('room:removeSeat', { seat: s.seat })}
                       >
-                        ✕
+                        <Icon name="close" size={16} />
                       </button>
                     )}
                   </span>
                 </>
               ) : (
-                <span className="text-white/40">ว่าง {isHost ? '(จะเติมบอทเมื่อเริ่ม)' : ''}</span>
+                <span className="text-white/40">{isHost ? t('lobby.emptyHost') : t('lobby.empty')}</span>
               )}
             </li>
           ))}
@@ -113,19 +134,23 @@ export default function Lobby({ room }: { room: RoomView }) {
         {isHost && filled < room.seats.length && (
           <div className="mt-3 flex gap-2">
             <button className="btn btn-ghost flex-1" onClick={() => act('room:addBot', { level: 'easy' })}>
-              + บอทง่าย
+              <Icon name="bot" size={18} />
+              {t('lobby.addEasy')}
             </button>
             <button className="btn btn-ghost flex-1" onClick={() => act('room:addBot', { level: 'medium' })}>
-              + บอทกลาง
+              <Icon name="bot" size={18} />
+              {t('lobby.addMedium')}
             </button>
           </div>
         )}
       </section>
 
       <section className="panel space-y-3 p-4">
-        <h2 className="font-semibold">ตั้งค่ากติกา {!isHost && <span className="text-xs text-white/50">(เฉพาะเจ้าของห้อง)</span>}</h2>
+        <h2 className="font-medium">
+          {t('lobby.settings')} {!isHost && <span className="text-xs text-white/50">{t('lobby.hostOnly')}</span>}
+        </h2>
         <label className="flex items-center justify-between gap-3">
-          <span>จำนวนผู้เล่น</span>
+          <span>{t('lobby.playerCount')}</span>
           <select
             className="rounded-lg bg-white px-2 py-1 text-slate-900 disabled:opacity-60"
             value={room.settings.playerCount}
@@ -134,13 +159,13 @@ export default function Lobby({ room }: { room: RoomView }) {
           >
             {[3, 4, 5, 6].map((n) => (
               <option key={n} value={n}>
-                {n} คน
+                {t('lobby.playersN', { n })}
               </option>
             ))}
           </select>
         </label>
         <label className="flex items-center justify-between gap-3">
-          <span>เวลาต่อตา</span>
+          <span>{t('lobby.turnTime')}</span>
           <select
             className="rounded-lg bg-white px-2 py-1 text-slate-900 disabled:opacity-60"
             value={room.settings.turnSeconds}
@@ -149,23 +174,23 @@ export default function Lobby({ room }: { room: RoomView }) {
           >
             {[10, 15, 20, 30, 45, 60].map((n) => (
               <option key={n} value={n}>
-                {n} วินาที
+                {t('lobby.seconds', { n })}
               </option>
             ))}
           </select>
         </label>
-        {TOGGLES.map((t) => (
-          <label key={t.key} className="flex items-center justify-between gap-3">
+        {TOGGLES.map((key) => (
+          <label key={key} className="flex items-center justify-between gap-3">
             <span>
-              {t.label}
-              <span className="block text-xs text-white/50">{t.hint}</span>
+              {t(`rule.${key}` as MessageKey)}
+              <span className="block text-xs text-white/50">{t(`rule.${key}.hint` as MessageKey)}</span>
             </span>
             <input
               type="checkbox"
               className="h-5 w-5 accent-amber-400"
-              checked={Boolean(room.settings[t.key])}
+              checked={Boolean(room.settings[key])}
               disabled={!isHost}
-              onChange={(e) => set({ [t.key]: e.target.checked })}
+              onChange={(e) => set({ [key]: e.target.checked })}
             />
           </label>
         ))}
@@ -173,26 +198,23 @@ export default function Lobby({ room }: { room: RoomView }) {
 
       <div className="sticky bottom-3 flex gap-2">
         {isHost ? (
-          <button
-            className="btn btn-primary flex-1 text-lg"
-            disabled={!humansReady}
-            onClick={() => act('room:start', {})}
-            title={humansReady ? '' : 'รอผู้เล่นกดพร้อม'}
-          >
-            เริ่มเกม
+          <button className="btn btn-primary flex-1 text-lg" disabled={!humansReady} onClick={() => act('room:start', {})}>
+            <Icon name="play" size={22} />
+            {t('lobby.start')}
           </button>
         ) : (
           <button
             className={`btn flex-1 text-lg ${mySeat?.ready ? 'btn-ghost' : 'btn-primary'}`}
             onClick={() => act('room:ready', { ready: !mySeat?.ready })}
           >
-            {mySeat?.ready ? 'ยกเลิกพร้อม' : 'พร้อม'}
+            {mySeat?.ready ? t('lobby.unready') : t('lobby.ready')}
           </button>
         )}
       </div>
-      {isHost && !humansReady && <p className="text-center text-sm text-white/60">รอผู้เล่นทุกคนกดพร้อม</p>}
+      {isHost && !humansReady && <p className="text-center text-sm text-white/60">{t('lobby.waitReady')}</p>}
 
       <Chat />
+      <Signature className="text-center" />
       {rules && <RulesSheet onClose={() => setRules(false)} />}
     </main>
   );

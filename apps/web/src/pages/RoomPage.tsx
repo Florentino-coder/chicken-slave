@@ -2,9 +2,12 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { NAME_MAX } from '@slave/shared';
 import { ensureGuest, errorText, send } from '../net';
+import { useT } from '../i18n';
 import { toast, useStore } from '../store';
 import Lobby from '../components/Lobby';
 import Table from '../components/Table';
+import { LogoMark, Signature } from '../components/Icon';
+import LangToggle from '../components/LangToggle';
 
 interface RoomInfo {
   exists: boolean;
@@ -15,6 +18,7 @@ interface RoomInfo {
 }
 
 export default function RoomPage() {
+  const t = useT();
   const { code = '' } = useParams();
   const room = useStore((s) => s.room);
   const connected = useStore((s) => s.connected);
@@ -22,12 +26,13 @@ export default function RoomPage() {
   if (room && room.code === code.toUpperCase()) {
     return room.status === 'lobby' ? <Lobby room={room} /> : <Table room={room} />;
   }
-  if (!connected) return <div className="flex h-full items-center justify-center opacity-70">กำลังเชื่อมต่อ…</div>;
+  if (!connected) return <div className="flex h-full items-center justify-center opacity-70">{t('app.connecting')}</div>;
   return <Invite code={code.toUpperCase()} />;
 }
 
 /** Landing page for an invite link: set a nickname and join. */
 function Invite({ code }: { code: string }) {
+  const t = useT();
   const guest = useStore((s) => s.guest);
   const [info, setInfo] = useState<RoomInfo | null>(null);
   const [name, setName] = useState(guest?.name ?? '');
@@ -52,48 +57,50 @@ function Invite({ code }: { code: string }) {
         if (r.ok) await ensureGuest(r.data.name);
       }
       const r = await send('room:join', { code, password: password || undefined });
-      if (!r.ok && r.error === 'wrong_password' && !password) toast('ห้องนี้ต้องใช้รหัสผ่าน', 'error');
+      if (!r.ok && r.error === 'wrong_password' && !password) toast(t('home.needPassword'), 'error');
       else if (!r.ok) toast(errorText(r.error), 'error');
     } finally {
       setBusy(false);
     }
   }
 
-  if (!info) return <div className="flex h-full items-center justify-center opacity-70">กำลังโหลดห้อง…</div>;
+  if (!info) return <div className="flex h-full items-center justify-center opacity-70">{t('invite.loading')}</div>;
 
   return (
     <main className="mx-auto flex min-h-full max-w-sm flex-col justify-center gap-4 px-4 py-8">
+      <div className="flex justify-end">
+        <LangToggle />
+      </div>
       <div className="panel space-y-4 p-5">
-        <div className="text-center">
-          <p className="text-sm text-white/70">คุณได้รับเชิญเข้าห้อง</p>
-          <p className="font-mono text-3xl font-bold tracking-[0.3em]">{code}</p>
+        <div className="flex flex-col items-center text-center text-gold">
+          <LogoMark size={56} />
+          <p className="mt-2 text-sm text-white/70">{t('invite.invited')}</p>
+          <p className="font-mono text-3xl tracking-[0.3em]">{code}</p>
         </div>
         {!info.exists ? (
           <>
-            <p className="text-center text-amber-300">ไม่พบห้องนี้ หรือห้องถูกปิดไปแล้ว</p>
+            <p className="text-center text-amber-300">{t('invite.notFound')}</p>
             <button className="btn btn-primary w-full" onClick={() => navigate('/')}>
-              กลับหน้าแรก
+              {t('invite.home')}
             </button>
           </>
         ) : info.status === 'playing' ? (
           <>
-            <p className="text-center text-amber-300">ห้องนี้กำลังเล่นอยู่ เข้าร่วมกลางเกมไม่ได้</p>
-            <Link to="/" className="btn btn-primary block w-full text-center">
-              กลับหน้าแรก
+            <p className="text-center text-amber-300">{t('invite.playing')}</p>
+            <Link to="/" className="btn btn-primary w-full">
+              {t('invite.home')}
             </Link>
           </>
         ) : (
           <form className="space-y-3" onSubmit={join}>
-            <p className="text-center text-sm text-white/70">
-              ผู้เล่น {info.players}/{info.capacity}
-            </p>
+            <p className="text-center text-sm text-white/70">{t('invite.players', { n: info.players ?? 0, max: info.capacity ?? 4 })}</p>
             <input
               className="input"
               value={name}
               maxLength={NAME_MAX}
               onChange={(e) => setName(e.target.value)}
-              placeholder="ชื่อเล่นของคุณ"
-              aria-label="ชื่อเล่น"
+              placeholder={t('invite.nickname')}
+              aria-label={t('invite.nickname')}
             />
             {info.hasPassword && (
               <input
@@ -101,16 +108,17 @@ function Invite({ code }: { code: string }) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="รหัสผ่านห้อง"
-                aria-label="รหัสผ่านห้อง"
+                placeholder={t('home.password')}
+                aria-label={t('home.password')}
               />
             )}
             <button className="btn btn-primary w-full" type="submit" disabled={busy}>
-              เข้าห้อง
+              {t('home.join')}
             </button>
           </form>
         )}
       </div>
+      <Signature className="text-center" />
     </main>
   );
 }

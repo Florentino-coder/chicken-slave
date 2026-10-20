@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
-import { Ack, C2SEvent, C2SPayload, ERROR_TEXT_TH } from '@slave/shared';
+import { Ack, C2SEvent, C2SPayload } from '@slave/shared';
+import { errorText, t } from './i18n';
 import { getState, prefs, setState, toast } from './store';
 import { sfx } from './sound';
 
@@ -19,9 +20,7 @@ export async function ensureGuest(name?: string) {
   return g;
 }
 
-export function errorText(code: string) {
-  return ERROR_TEXT_TH[code] ?? code;
-}
+export { errorText };
 
 export function connect() {
   if (socket) return socket;
@@ -36,7 +35,7 @@ export function connect() {
         await ensureGuest();
         s.connect();
       } catch {
-        toast('เชื่อมต่อไม่สำเร็จ', 'error');
+        toast(t('err.connect'), 'error');
       }
     }
   });

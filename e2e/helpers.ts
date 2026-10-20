@@ -7,7 +7,7 @@ export async function newGuest(browser: Browser, opts: BrowserContextOptions = {
   const ctx = await browser.newContext(opts);
   const page = await ctx.newPage();
   await page.goto('/');
-  await expect(page.getByRole('button', { name: '＋ สร้างห้อง' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'สร้างห้อง' })).toBeEnabled();
   return page;
 }
 
@@ -19,7 +19,7 @@ export async function setHomeName(page: Page, name: string) {
 export async function createRoom(page: Page, opts: { name?: string; password?: string } = {}): Promise<string> {
   if (opts.name) await setHomeName(page, opts.name);
   if (opts.password) await page.getByLabel('รหัสผ่านห้องใหม่').fill(opts.password);
-  await page.getByRole('button', { name: '＋ สร้างห้อง' }).click();
+  await page.getByRole('button', { name: 'สร้างห้อง' }).click();
   const code = page.getByTestId('room-code');
   await expect(code).toHaveText(/^[A-Z0-9]{6}$/);
   return (await code.textContent())!.trim();
@@ -55,14 +55,14 @@ export async function statusText(page: Page): Promise<string> {
 
 /**
  * Performs one UI action if this page has something to do. Returns true if it acted.
- * Turn: 💡 then ลงไพ่, or ผ่าน when no legal move. Exchange: pick N cards then ให้ไพ่.
+ * Turn: hint (คำใบ้) then ลงไพ่, or ผ่าน when no legal move. Exchange: pick N cards then ให้ไพ่.
  */
 export async function step(page: Page): Promise<boolean> {
   const status = await statusText(page);
   if (status.startsWith('ตาคุณ')) {
     const before = await page.getByTestId('status').textContent();
     const handBefore = await hand(page).count();
-    const hint = page.getByRole('button', { name: '💡' });
+    const hint = page.getByRole('button', { name: 'คำใบ้' });
     if (!(await hint.isEnabled())) return false;
     await hint.click();
     const play = page.getByRole('button', { name: /^ลงไพ่/ });
