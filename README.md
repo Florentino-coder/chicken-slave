@@ -70,13 +70,33 @@ e2e               Playwright tests
 | `ROOM_IDLE_MS` | 600000 | Delete rooms with nobody connected |
 | `TURN_MS` | from room settings | Override turn time (tests) |
 | `GUEST_PER_MINUTE` | 10 | Guest creation rate limit per IP |
+| `ALLOWED_ORIGINS` | empty | Comma-separated extra origins allowed to open sockets (production) |
+| `TRUST_PROXY` | 1 in production, else 0 | Proxy hops to trust for client IPs |
 | `STATIC_DIR` | `apps/web/dist` | Built client to serve |
 
 `GET /api/health` returns room counts and counters (guests, rooms, games, rounds, quick matches).
 
 ## Deploy
 
-`Dockerfile` builds and serves everything from one container. `render.yaml` is a Render blueprint (generates `JWT_SECRET`). Socket servers need a long-lived process, so use Render, Fly.io, or Railway rather than serverless.
+### Option A: Render only (simplest)
+
+Render runs the Docker image, which serves the web app, the API and the sockets from one URL.
+
+1. Render dashboard: **New > Blueprint**, pick this repository. Render reads `render.yaml`.
+2. Leave `ALLOWED_ORIGINS` empty. Apply. The first build takes a few minutes.
+3. Open `https://chicken-slave.onrender.com` (or the URL Render shows).
+
+The free plan sleeps after 15 minutes without traffic; the first visit after that takes about a minute.
+
+### Option B: Vercel (web) + Render (game server)
+
+1. Deploy Render as in option A and note its URL.
+2. In `vercel.json`, set the `/api` rewrite destination to that Render URL.
+3. Vercel: **Add New > Project**, import this repository. Settings come from `vercel.json`.
+4. Vercel environment variable: `VITE_SOCKET_URL=https://<your-render-url>`. Deploy.
+5. Render environment: `ALLOWED_ORIGINS=https://<your-vercel-domain>` and `TRUST_PROXY=2`. Redeploy.
+
+`/api` goes through Vercel so the guest cookie stays first-party; the socket connects straight to Render with the guest token, because Vercel cannot proxy WebSockets.
 
 ### Scaling
 

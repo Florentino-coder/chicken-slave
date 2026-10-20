@@ -6,7 +6,14 @@ services:
     plan: free
     healthCheckPath: /api/health
     envVars:
-      - key: JWT_SECRET
-        generateValue: true
       - key: NODE_ENV
         value: production
+      - key: JWT_SECRET
+        generateValue: true
+      # Comma-separated web origins allowed to open sockets, e.g. https://chicken-slave.vercel.app
+      # Leave empty when players use the Render URL directly.
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # 1 = Render's proxy only. Use 2 when the web app is on Vercel (Vercel edge + Render proxy).
+      - key: TRUST_PROXY
+        value: "1"

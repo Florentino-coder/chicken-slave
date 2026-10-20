@@ -5,6 +5,10 @@ import { getState, prefs, setState, toast } from './store';
 import { sfx } from './sound';
 
 let socket: Socket | null = null;
+/** Latest guest token; sent in the socket handshake so a socket on another origin (Render) can authenticate. */
+let token: string | null = null;
+/** Set when the web app is hosted apart from the game server (e.g. Vercel + Render). Same origin when empty. */
+const SOCKET_URL: string | undefined = import.meta.env.VITE_SOCKET_URL || undefined;
 
 export async function ensureGuest(name?: string) {
   const res = await fetch('/api/guest', {
@@ -14,7 +18,8 @@ export async function ensureGuest(name?: string) {
     body: JSON.stringify({ name: name ?? prefs.get('name') ?? undefined }),
   });
   if (!res.ok) throw new Error(res.status === 429 ? 'rate_limited' : 'guest_failed');
-  const g = (await res.json()) as { guestId: string; name: string };
+  const g = (await res.json()) as { guestId: string; name: string; token: string };
+  token = g.token;
   prefs.set('name', g.name);
   setState({ guest: { guestId: g.guestId, name: g.name } });
   return g;
@@ -24,7 +29,11 @@ export { errorText };
 
 export function connect() {
   if (socket) return socket;
-  const s = io({ withCredentials: true, transports: ['websocket', 'polling'] });
+  const s = io(SOCKET_URL ?? '', {
+    withCredentials: true,
+    transports: ['websocket', 'polling'],
+    auth: (cb) => cb(token ? { token } : {}),
+  });
   socket = s;
 
   s.on('connect', () => setState({ connected: true }));

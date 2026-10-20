@@ -23,7 +23,23 @@ export function createApp(overrides: Partial<ServerConfig> = {}) {
   const app = express();
   const http = createServer(app);
   const io = new Server(http, {
-    cors: cfg.production ? undefined : { origin: true, credentials: true },
+    cors: cfg.production
+      ? cfg.allowedOrigins.length
+        ? { origin: cfg.allowedOrigins, credentials: true }
+        : undefined
+      : { origin: true, credentials: true },
+    // Browsers do not apply CORS to WebSocket upgrades, so check the origin ourselves in production.
+    allowRequest: (req, done) => {
+      const origin = req.headers.origin;
+      const host = req.headers.host;
+      let sameHost = false;
+      try {
+        sameHost = !!origin && !!host && new URL(origin).host === host;
+      } catch {
+        /* malformed Origin header */
+      }
+      done(null, !cfg.production || !origin || sameHost || cfg.allowedOrigins.includes(origin));
+    },
     maxHttpBufferSize: 16_000,
     pingInterval: 10_000,
     pingTimeout: 8_000,

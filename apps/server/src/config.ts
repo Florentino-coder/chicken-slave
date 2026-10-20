@@ -17,6 +17,8 @@ export interface ServerConfig {
   guestPerMinute: number;
   /** Express trust-proxy hops; only set behind a real proxy, or X-Forwarded-For can spoof IPs. */
   trustProxy: number;
+  /** Extra origins allowed to open sockets (a web app hosted elsewhere, e.g. on Vercel). */
+  allowedOrigins: string[];
   /** Directory with the built web app to serve, if any. */
   staticDir: string | null;
 }
@@ -43,6 +45,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     turnMsOverride: env.TURN_MS ? Number(env.TURN_MS) : null,
     guestPerMinute: num(env.GUEST_PER_MINUTE, 10),
     trustProxy: num(env.TRUST_PROXY, production ? 1 : 0),
+    allowedOrigins: (env.ALLOWED_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean),
     staticDir: env.STATIC_DIR ?? null,
     ...overrides,
   };
