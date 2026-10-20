@@ -1,5 +1,5 @@
 import { CardId, RANK_TWO, Rng, THREE_OF_CLUBS, fullDeck, isValidCard, shuffle, sortCards } from './cards';
-import { Combo, canBeat, classify } from './combos';
+import { Combo, canBeat, classify, isBomb } from './combos';
 
 export interface Settings {
   /** Seats at the table, 3..6. */
@@ -11,6 +11,8 @@ export interface Settings {
   revolution: boolean;
   /** Finishing with a 2 in the last play sends the player to the bottom of the order. */
   noTwoFinish: boolean;
+  /** A triple cuts any single and a quad cuts any pair (see isBomb). */
+  bombs: boolean;
   /** Seconds per turn; enforced by the server, not the engine. */
   turnSeconds: number;
 }
@@ -21,8 +23,16 @@ export const DEFAULT_SETTINGS: Settings = {
   allowStraights: false,
   revolution: false,
   noTwoFinish: false,
+  bombs: true,
   turnSeconds: 20,
 };
+
+/** One play in the current pile, oldest first. */
+export interface TrickPlay {
+  p: string;
+  cards: CardId[];
+  bomb: boolean;
+}
 
 export type Role = 'king' | 'queen' | 'commoner' | 'peasant' | 'slave';
 export type Phase = 'exchange' | 'playing' | 'roundEnd';
@@ -37,7 +47,7 @@ export interface ExchangeTask {
 
 export type LogEntry =
   | { t: 'round'; round: number }
-  | { t: 'play'; p: string; cards: CardId[]; combo: Combo['type'] }
+  | { t: 'play'; p: string; cards: CardId[]; combo: Combo['type']; bomb?: boolean }
   | { t: 'pass'; p: string }
   | { t: 'clear'; next: string }
   | { t: 'finish'; p: string; place: number; penalized: boolean }
@@ -53,6 +63,8 @@ export interface GameState {
   round: number;
   turn: string | null;
   pile: Combo | null;
+  /** Every play since the pile was last cleared; `pile` is the last entry's combo. */
+  trick: TrickPlay[];
   lastPlayer: string | null;
   passed: string[];
   finished: string[];
@@ -113,6 +125,7 @@ export function createGame(seats: string[], settings: Partial<Settings>, rng: Rn
     round: 0,
     turn: null,
     pile: null,
+    trick: [],
     lastPlayer: null,
     passed: [],
     finished: [],
@@ -148,6 +161,7 @@ function startRound(state: GameState, rng: Rng) {
   const n = state.seats.length;
   state.round += 1;
   state.pile = null;
+  state.trick = [];
   state.lastPlayer = null;
   state.passed = [];
   state.finished = [];
@@ -213,6 +227,7 @@ function nextActiveAfter(state: GameState, from: string): string {
 
 function clearPile(state: GameState, leader: string) {
   state.pile = null;
+  state.trick = [];
   state.passed = [];
   state.turn = leader;
   pushLog(state, { t: 'clear', next: leader });
@@ -256,6 +271,7 @@ function endRound(state: GameState) {
   state.phase = 'roundEnd';
   state.turn = null;
   state.pile = null;
+  state.trick = [];
   state.lastPlayer = null;
   state.passed = [];
   state.mustInclude = null;
@@ -318,14 +334,17 @@ export function applyAction(prev: GameState, player: string, action: Action): Ac
   if (state.mustInclude != null && !combo.cards.includes(state.mustInclude)) {
     return { ok: false, error: 'must_include_3c' };
   }
-  if (!canBeat(combo, state.pile, state.revolution)) return { ok: false, error: 'cannot_beat' };
+  const bombs = state.settings.bombs ?? false;
+  if (!canBeat(combo, state.pile, state.revolution, bombs)) return { ok: false, error: 'cannot_beat' };
+  const bomb = isBomb(combo, state.pile, bombs);
 
   state.hands[player] = hand.filter((c) => !combo.cards.includes(c));
   state.pile = combo;
+  state.trick.push({ p: player, cards: combo.cards, bomb });
   state.lastPlayer = player;
   state.mustInclude = null;
   if (!state.settings.passLock) state.passed = [];
-  pushLog(state, { t: 'play', p: player, cards: combo.cards, combo: combo.type });
+  pushLog(state, { t: 'play', p: player, cards: combo.cards, combo: combo.type, ...(bomb ? { bomb } : {}) });
 
   if (state.settings.revolution && combo.type === 'quad') {
     state.revolution = !state.revolution;
@@ -360,6 +379,8 @@ export interface PlayerView {
   round: number;
   turn: string | null;
   pile: Combo | null;
+  /** Plays in the current pile, oldest first. */
+  trick: TrickPlay[];
   lastPlayer: string | null;
   passed: string[];
   finished: string[];
@@ -389,6 +410,7 @@ export function viewFor(state: GameState, player: string): PlayerView {
     round: state.round,
     turn: state.turn,
     pile: state.pile ? { ...state.pile, cards: [...state.pile.cards] } : null,
+    trick: state.trick.map((t) => ({ ...t, cards: [...t.cards] })),
     lastPlayer: state.lastPlayer,
     passed: [...state.passed],
     finished: [...state.finished, ...[...state.bottom].reverse()],

@@ -9,7 +9,7 @@ import Chat from './Chat';
 import Icon, { LogoMark, Signature } from './Icon';
 import LangToggle from './LangToggle';
 
-const TOGGLES: (keyof Settings)[] = ['passLock', 'allowStraights', 'revolution', 'noTwoFinish'];
+const TOGGLES: (keyof Settings)[] = ['bombs', 'passLock', 'allowStraights', 'revolution', 'noTwoFinish'];
 
 export default function Lobby({ room }: { room: RoomView }) {
   const t = useT();

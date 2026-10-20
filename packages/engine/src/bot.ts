@@ -1,5 +1,5 @@
 import { CardId, RANK_TWO, rankOf } from './cards';
-import { Combo, legalMoves } from './combos';
+import { Combo, isBomb, legalMoves } from './combos';
 import { Action, GameState, activePlayers } from './game';
 
 export type BotLevel = 'easy' | 'medium';
@@ -45,6 +45,7 @@ function movesFor(state: GameState, player: string): Combo[] {
     revolution: state.revolution,
     mustInclude: state.mustInclude,
     allowStraights: state.settings.allowStraights,
+    bombs: state.settings.bombs ?? false,
   });
 }
 
@@ -71,9 +72,15 @@ export function botAction(state: GameState, player: string, level: BotLevel = 'm
     return { type: 'play', cards: finisher.cards };
   }
 
+  // Bombs are kept back: bots follow normally when they can and only bomb when it pays off.
+  const bombing = (m: Combo) => isBomb(m, state.pile, state.settings.bombs ?? false);
+  const normal = moves.filter((m) => !bombing(m));
+  const cheapestBomb = () => moves.filter(bombing).sort(byStrength)[0];
+
   if (level === 'easy') {
+    if (state.pile && normal.length === 0) return { type: 'play', cards: cheapestBomb().cards };
     const pick = state.pile
-      ? [...moves].sort(byStrength)[0]
+      ? [...normal].sort(byStrength)[0]
       : [...moves].filter((m) => m.type !== 'straight').sort((a, b) => byStrength(a, b) || b.size - a.size)[0];
     return { type: 'play', cards: pick.cards };
   }
@@ -97,8 +104,13 @@ export function botAction(state: GameState, player: string, level: BotLevel = 'm
     return { type: 'play', cards: pick.cards };
   }
 
+  if (normal.length === 0) {
+    // Bomb only near the end of the hand, or to cut an ace or a 2.
+    return endgame || isTop(state.pile) ? { type: 'play', cards: cheapestBomb().cards } : { type: 'pass' };
+  }
+
   const cost = (m: Combo) => power(state, m.high) + (breaksSet(m) ? 30 : 0) + (isTop(m) && !endgame ? 40 : 0);
-  const best = [...moves].sort((a, b) => cost(a) - cost(b))[0];
+  const best = [...normal].sort((a, b) => cost(a) - cost(b))[0];
   if (!endgame && isTop(best) && hand.length > 6) return { type: 'pass' };
   if (!endgame && breaksSet(best) && (counts.get(best.rank) ?? 0) >= 3) return { type: 'pass' };
   return { type: 'play', cards: best.cards };

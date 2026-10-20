@@ -65,7 +65,7 @@ export async function step(page: Page): Promise<boolean> {
     const hint = page.getByRole('button', { name: 'คำใบ้' });
     if (!(await hint.isEnabled())) return false;
     await hint.click();
-    const play = page.getByRole('button', { name: /^ลงไพ่/ });
+    const play = page.getByRole('button', { name: /^(ลงไพ่|ระเบิด)/ });
     const pass = page.getByRole('button', { name: 'ผ่าน', exact: true });
     let played = false;
     // The hint updates React state synchronously; give it a couple of frames at most.

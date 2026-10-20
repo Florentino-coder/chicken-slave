@@ -556,9 +556,10 @@ describe('full game: 4 real clients, 2+ rounds with exchange', () => {
     expect(exLog.some((e) => e.from === king && e.count === 2)).toBe(true);
     expect(exLog.some((e) => e.from === queen && e.count === 1)).toBe(true);
 
-    // Cheating attempts in the exchange were rejected.
+    // Cheating attempts in the exchange were rejected. The test client is faster than any human, so the
+    // per-socket rate limit may answer one of them first; that is a rejection too.
     expect(cheat.length).toBeGreaterThanOrEqual(4);
-    expect(cheat.every((e) => ['bad_count', 'not_in_hand', 'stale'].includes(e))).toBe(true);
+    expect(cheat.every((e) => ['bad_count', 'not_in_hand', 'stale', 'rate_limited'].includes(e))).toBe(true);
     expect(cheat).toContain('bad_count');
 
     // Only legal moves were made: no errors other than benign 'stale' races.

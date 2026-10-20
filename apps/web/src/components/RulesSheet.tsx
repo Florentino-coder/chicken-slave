@@ -1,7 +1,7 @@
 import { MessageKey, useT } from '../i18n';
 import { Signature } from './Icon';
 
-const LINES = Array.from({ length: 10 }, (_, i) => `rules.${i + 1}` as MessageKey);
+const LINES = Array.from({ length: 11 }, (_, i) => `rules.${i + 1}` as MessageKey);
 
 export default function RulesSheet({ onClose }: { onClose: () => void }) {
   const t = useT();

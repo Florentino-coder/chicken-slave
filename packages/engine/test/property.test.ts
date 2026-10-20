@@ -59,6 +59,7 @@ describe('property: bot-driven full games', () => {
       expect(stats.revolutions).toBeGreaterThan(0);
       expect(stats.penalized).toBeGreaterThan(0);
       expect(stats.straights).toBeGreaterThan(0);
+      expect(stats.bombs).toBeGreaterThan(0);
     }
   }, 600_000);
 });

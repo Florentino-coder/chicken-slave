@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { CardId, LogEntry, Role, canBeat, cardLabel, classify, legalMoves } from '@slave/engine';
+import { CardId, Combo, LogEntry, PlayerView as View, Role, canBeat, cardLabel, classify, isBomb, legalMoves } from '@slave/engine';
 import type { PlayerView, RoomView } from '@slave/shared';
 import { act } from '../net';
 import { MessageKey, useT } from '../i18n';
@@ -13,8 +13,23 @@ import PlayingCard, { CardBack } from './PlayingCard';
 import Chat from './Chat';
 import RulesSheet from './RulesSheet';
 import Icon from './Icon';
+import TrickPile from './TrickPile';
 
 type T = ReturnType<typeof useT>;
+
+/** Why the selected cards cannot be played right now, or null when they can (or nothing is selected). */
+function blockedReason(t: T, game: View, selected: CardId[], combo: Combo | null): string | null {
+  if (!selected.length || game.phase !== 'playing' || game.turn !== game.you) return null;
+  if (!combo) return t('reason.invalid');
+  if (game.mustInclude != null && !selected.includes(game.mustInclude)) return t('reason.mustThree');
+  const pile = game.pile;
+  const bombs = game.settings.bombs ?? false;
+  if (!pile || canBeat(combo, pile, game.revolution, bombs)) return null;
+  if (bombs && pile.type === 'pair' && combo.type === 'triple') return t('reason.tripleOnPair');
+  if (bombs && pile.type === 'single' && combo.type === 'quad') return t('reason.quadOnSingle');
+  const extra = bombs && pile.type === 'single' ? t('reason.orTriple') : bombs && pile.type === 'pair' ? t('reason.orQuad') : '';
+  return t('reason.beat', { combo: t(`combo.${pile.type}` as MessageKey), card: cardLabel(pile.high) }) + extra;
+}
 
 /** Role icons share the court set; the engine's 'queen' is shown as the Noble. */
 export const ROLE_ICON: Record<Role, IconName> = {
@@ -41,7 +56,11 @@ function logText(t: T, e: LogEntry, name: (id: string) => string): string {
     case 'round':
       return t('log.round', { n: e.round });
     case 'play':
-      return t('log.play', { name: name(e.p), combo: comboLabel(t, e.combo), cards: e.cards.map(cardLabel).join(' ') });
+      return t(e.bomb ? 'log.bomb' : 'log.play', {
+        name: name(e.p),
+        combo: comboLabel(t, e.combo),
+        cards: e.cards.map(cardLabel).join(' '),
+      });
     case 'pass':
       return t('log.pass', { name: name(e.p) });
     case 'clear':
@@ -85,11 +104,14 @@ export default function Table({ room }: { room: RoomView }) {
   const remaining = room.deadline ? Math.max(0, room.deadline - now) : 0;
 
   const combo = selected.length ? classify(selected, game.settings) : null;
+  const bombs = game.settings.bombs ?? false;
   const canPlay =
     myTurn &&
     !!combo &&
-    canBeat(combo, game.pile, game.revolution) &&
+    canBeat(combo, game.pile, game.revolution, bombs) &&
     (game.mustInclude == null || selected.includes(game.mustInclude));
+  const bombing = !!combo && canPlay && isBomb(combo, game.pile, bombs);
+  const reason = blockedReason(t, game, selected, combo);
   const canExchange = !!game.myExchange && selected.length === game.myExchange.count;
 
   const toggle = (c: CardId) => setSelected((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
@@ -114,13 +136,16 @@ export default function Table({ room }: { room: RoomView }) {
       revolution: game.revolution,
       mustInclude: game.mustInclude,
       allowStraights: game.settings.allowStraights,
+      bombs,
     });
     if (!moves.length) {
       toast(t('table.noMove'));
       return;
     }
     const strength = (h: number) => (game.revolution ? 51 - h : h);
-    moves.sort((a, b) => strength(a.high) - strength(b.high) || b.size - a.size);
+    // Suggest a normal follow before a bomb, then the weakest cards.
+    const bombRank = (m: Combo) => (isBomb(m, game.pile, bombs) ? 1 : 0);
+    moves.sort((a, b) => bombRank(a) - bombRank(b) || strength(a.high) - strength(b.high) || b.size - a.size);
     setSelected(moves[0].cards);
   }
 
@@ -230,31 +255,13 @@ export default function Table({ room }: { room: RoomView }) {
       </section>
 
       {/* Pile */}
-      <section className="flex flex-1 flex-col items-center justify-center gap-2 px-3" data-testid="pile">
-        <AnimatePresence mode="popLayout">
-          {game.pile ? (
-            <motion.div
-              key={game.pile.cards.join(',')}
-              initial={{ scale: 0.6, opacity: 0, y: 40 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="flex flex-col items-center gap-2"
-            >
-              <div className="flex gap-1">
-                {game.pile.cards.map((c) => (
-                  <PlayingCard key={c} id={c} />
-                ))}
-              </div>
-              <p className="text-sm text-white/70">
-                {t('table.played', { name: name(game.lastPlayer ?? ''), combo: comboLabel(t, game.pile.type) })}
-              </p>
-            </motion.div>
-          ) : (
-            <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="tracking-wide text-white/45">
-              {t('table.empty')}
-            </motion.p>
-          )}
-        </AnimatePresence>
+      <section className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 overflow-hidden px-3" data-testid="pile">
+        <TrickPile trick={game.trick ?? []} name={name} round={game.round} />
+        {game.pile && (
+          <p className="text-sm text-white/70">
+            {t('table.played', { name: name(game.lastPlayer ?? ''), combo: comboLabel(t, game.pile.type) })}
+          </p>
+        )}
       </section>
 
       {/* Status & my info */}
@@ -292,6 +299,12 @@ export default function Table({ room }: { room: RoomView }) {
         </div>
       </section>
 
+      {reason && (
+        <p className="px-3 pb-1 text-center text-xs text-amber-300" role="status" data-testid="play-reason">
+          {reason}
+        </p>
+      )}
+
       {/* Actions */}
       <section className="flex gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {game.phase === 'exchange' && game.myExchange ? (
@@ -310,9 +323,13 @@ export default function Table({ room }: { room: RoomView }) {
             <button className="btn btn-ghost" disabled={!selected.length} onClick={() => setSelected([])} aria-label={t('table.clear')}>
               <Icon name="close" size={18} />
             </button>
-            <button className="btn btn-primary flex-1" disabled={!canPlay || sending} onClick={() => send('play')}>
-              <Icon name="play" size={18} />
-              {t('table.play')}
+            <button
+              className={`btn flex-1 ${bombing ? 'bg-orange-500 text-white' : 'btn-primary'}`}
+              disabled={!canPlay || sending}
+              onClick={() => send('play')}
+            >
+              <Icon name={bombing ? 'quick' : 'play'} size={18} />
+              {bombing ? t('table.bomb') : t('table.play')}
               {combo ? ` (${comboLabel(t, combo.type)})` : ''}
             </button>
           </>

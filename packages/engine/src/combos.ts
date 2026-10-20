@@ -44,11 +44,22 @@ export function classify(cards: readonly CardId[], opts: ComboOptions): Combo | 
 }
 
 /**
+ * Bomb rule: any triple cuts a single, and only a quad cuts a pair, whatever the ranks.
+ * Afterwards the pile is the bomb, so followers must play a higher triple or quad.
+ */
+export function isBomb(combo: Combo, pile: Combo | null, bombs: boolean): boolean {
+  if (!bombs || !pile) return false;
+  return (pile.type === 'single' && combo.type === 'triple') || (pile.type === 'pair' && combo.type === 'quad');
+}
+
+/**
  * True when `combo` may be played on top of `pile`.
  * Same type and size are required; the higher top card wins. Revolution flips the order.
+ * With `bombs`, a triple also beats any single and a quad also beats any pair.
  */
-export function canBeat(combo: Combo, pile: Combo | null, revolution = false): boolean {
+export function canBeat(combo: Combo, pile: Combo | null, revolution = false, bombs = false): boolean {
   if (!pile) return true;
+  if (isBomb(combo, pile, bombs)) return true;
   if (combo.type !== pile.type || combo.size !== pile.size) return false;
   return revolution ? combo.high < pile.high : combo.high > pile.high;
 }
@@ -99,6 +110,8 @@ export function allCombos(hand: readonly CardId[], opts: ComboOptions): Combo[] 
 export interface MoveQuery extends ComboOptions {
   pile: Combo | null;
   revolution?: boolean;
+  /** Bomb rule (see isBomb). */
+  bombs?: boolean;
   /** When set, every returned move must contain this card (first lead of the game: 3♣). */
   mustInclude?: CardId | null;
 }
@@ -107,7 +120,7 @@ export interface MoveQuery extends ComboOptions {
 export function legalMoves(hand: readonly CardId[], q: MoveQuery): Combo[] {
   return allCombos(hand, q).filter(
     (c) =>
-      canBeat(c, q.pile, q.revolution) &&
+      canBeat(c, q.pile, q.revolution, q.bombs) &&
       (q.mustInclude == null || c.cards.includes(q.mustInclude)),
   );
 }

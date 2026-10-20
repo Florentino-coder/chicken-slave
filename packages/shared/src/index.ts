@@ -16,6 +16,7 @@ export const settingsSchema = z
     allowStraights: z.boolean(),
     revolution: z.boolean(),
     noTwoFinish: z.boolean(),
+    bombs: z.boolean(),
     turnSeconds: z.number().int().min(10).max(60),
   })
   .partial();

@@ -56,6 +56,10 @@ function checkState(g: GameState, played: Set<CardId>, ctx: unknown) {
     if (activePlayers(g).length < 2) fail('playing with < 2 active players', ctx);
     if (g.settings.passLock && g.pile && g.passed.includes(t)) fail('turn on pass-locked player', ctx);
     if (g.pile) for (const c of g.pile.cards) if (!played.has(c)) fail('pile card not marked played', ctx);
+    if (!g.pile !== (g.trick.length === 0)) fail('trick and pile disagree on emptiness', ctx);
+    if (g.pile && JSON.stringify(g.trick[g.trick.length - 1].cards) !== JSON.stringify(g.pile.cards)) fail('last trick play is not the pile', ctx);
+    for (const t of g.trick) for (const c of t.cards) if (!played.has(c)) fail('trick card not marked played', ctx);
+    if (!g.settings.bombs && g.trick.some((t) => t.bomb)) fail('bomb while bombs disabled', ctx);
     if (!g.pile && g.passed.length) fail('passed list not cleared with pile', ctx);
     if (g.mustInclude != null && !g.hands[t].includes(g.mustInclude)) fail('mustInclude not in leader hand', ctx);
   } else if (g.phase === 'exchange') {
@@ -70,6 +74,7 @@ export interface Stats {
   revolutions: number;
   penalized: number;
   straights: number;
+  bombs: number;
 }
 
 export function simulateGame(seed: number, stats: Stats) {
@@ -80,6 +85,7 @@ export function simulateGame(seed: number, stats: Stats) {
     allowStraights: rng(2) === 0,
     revolution: rng(2) === 0,
     noTwoFinish: rng(2) === 0,
+    bombs: rng(3) !== 0,
   };
   const seats = Array.from({ length: n }, (_, i) => `s${i}`);
   const level: Record<string, BotLevel> = Object.fromEntries(seats.map((s) => [s, rng(2) ? 'easy' : 'medium']));
@@ -128,6 +134,7 @@ export function simulateGame(seed: number, stats: Stats) {
         for (const c of action.cards) played.add(c);
         if (next.pile && next.pile.type === 'straight') stats.straights++;
         if (next.revolution !== g.revolution) stats.revolutions++;
+        if (next.trick[next.trick.length - 1]?.bomb) stats.bombs++;
       }
       g = next;
       stats.actions++;
@@ -174,7 +181,7 @@ function checkExchangeStart(g: GameState, n: number, ctx: unknown) {
 }
 
 export function newStats(): Stats {
-  return { games: 0, rounds: 0, actions: 0, revolutions: 0, penalized: 0, straights: 0 };
+  return { games: 0, rounds: 0, actions: 0, revolutions: 0, penalized: 0, straights: 0, bombs: 0 };
 }
 
 /** Simulates seeds [from, to). Throws on the first violated invariant. */
