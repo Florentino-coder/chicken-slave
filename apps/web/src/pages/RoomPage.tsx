@@ -52,7 +52,8 @@ function Invite({ code }: { code: string }) {
         if (r.ok) await ensureGuest(r.data.name);
       }
       const r = await send('room:join', { code, password: password || undefined });
-      if (!r.ok) toast(errorText(r.error), 'error');
+      if (!r.ok && r.error === 'wrong_password' && !password) toast('ห้องนี้ต้องใช้รหัสผ่าน', 'error');
+      else if (!r.ok) toast(errorText(r.error), 'error');
     } finally {
       setBusy(false);
     }

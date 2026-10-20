@@ -8,6 +8,7 @@ import { Ack, C2S, C2SEvent } from '@slave/shared';
 import { TOKEN_COOKIE, TOKEN_TTL_SECONDS, issueToken, newGuestId, verifyToken } from './auth';
 import { ServerConfig, loadConfig } from './config';
 import { RoomManager } from './manager';
+import { metrics } from './metrics';
 import { RateLimiter, cleanChat, cleanName, randomGuestName } from './util';
 
 interface SocketData {
@@ -30,16 +31,22 @@ export function createApp(overrides: Partial<ServerConfig> = {}) {
   const manager = new RoomManager(io, cfg);
   /** Latest display name per guest; tokens may carry an older one. */
   const names = new Map<string, string>();
+  const rememberName = (guestId: string, name: string) => {
+    names.delete(guestId);
+    names.set(guestId, name);
+    // Oldest entries first in a Map; drop them once the cache is large.
+    if (names.size > 50_000) for (const k of [...names.keys()].slice(0, 10_000)) names.delete(k);
+  };
   const guestLimiter = new RateLimiter(cfg.guestPerMinute, cfg.guestPerMinute / 60);
   const eventLimiter = new RateLimiter(20, 10);
   const chatLimiter = new RateLimiter(5, 0.5);
 
   app.disable('x-powered-by');
-  app.set('trust proxy', 1);
+  app.set('trust proxy', cfg.trustProxy);
   app.use(express.json({ limit: '4kb' }));
 
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, ...manager.stats() });
+    res.json({ ok: true, ...manager.stats(), metrics, uptimeSec: Math.round((Date.now() - metrics.startedAt) / 1000) });
   });
 
   app.post('/api/guest', (req, res) => {
@@ -51,8 +58,9 @@ export function createApp(overrides: Partial<ServerConfig> = {}) {
       return;
     }
     const guestId = existing?.sub ?? newGuestId();
+    if (!existing) metrics.guestsCreated++;
     const name = requested ?? names.get(guestId) ?? existing?.name ?? randomGuestName();
-    names.set(guestId, name);
+    rememberName(guestId, name);
     manager.roomOf(guestId)?.rename(guestId, name);
     const token = issueToken(cfg.jwtSecret, guestId, name);
     res.cookie(TOKEN_COOKIE, token, {
@@ -96,7 +104,7 @@ export function createApp(overrides: Partial<ServerConfig> = {}) {
     }
     socket.data.guestId = claims.sub;
     socket.data.name = names.get(claims.sub) ?? claims.name;
-    names.set(claims.sub, socket.data.name);
+    rememberName(claims.sub, socket.data.name);
     next();
   });
 
@@ -194,7 +202,7 @@ export function createApp(overrides: Partial<ServerConfig> = {}) {
     on('profile:update', (d) => {
       const name = cleanName(d.name);
       if (!name) return 'bad_request';
-      names.set(guestId, name);
+      rememberName(guestId, name);
       socket.data.name = name;
       myRoom()?.rename(guestId, name);
       return { data: { name } };

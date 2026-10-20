@@ -1,4 +1,4 @@
-import { CardId, RANK_TWO, Rng, THREE_OF_CLUBS, fullDeck, shuffle, sortCards } from './cards';
+import { CardId, RANK_TWO, Rng, THREE_OF_CLUBS, fullDeck, isValidCard, shuffle, sortCards } from './cards';
 import { Combo, canBeat, classify } from './combos';
 
 export interface Settings {
@@ -263,7 +263,12 @@ function endRound(state: GameState) {
 }
 
 function holdsAll(hand: readonly CardId[], cards: readonly CardId[]): boolean {
-  return new Set(cards).size === cards.length && cards.every((c) => hand.includes(c));
+  // A plain loop, not every(): every() skips holes in sparse arrays.
+  if (new Set(cards).size !== cards.length) return false;
+  for (let i = 0; i < cards.length; i++) {
+    if (!isValidCard(cards[i]) || !hand.includes(cards[i])) return false;
+  }
+  return true;
 }
 
 /** Validates and applies one action. Never mutates `prev`. */
@@ -378,25 +383,25 @@ export function viewFor(state: GameState, player: string): PlayerView {
   const task = state.exchanges.find((t) => t.from === player && !t.done);
   return {
     you: player,
-    settings: state.settings,
-    seats: state.seats,
+    settings: { ...state.settings },
+    seats: [...state.seats],
     phase: state.phase,
     round: state.round,
     turn: state.turn,
-    pile: state.pile,
+    pile: state.pile ? { ...state.pile, cards: [...state.pile.cards] } : null,
     lastPlayer: state.lastPlayer,
-    passed: state.passed,
+    passed: [...state.passed],
     finished: [...state.finished, ...[...state.bottom].reverse()],
     revolution: state.revolution,
     mustInclude: state.mustInclude,
-    roles: state.roles,
+    roles: { ...state.roles },
     handCounts: Object.fromEntries(state.seats.map((s) => [s, state.hands[s].length])),
-    myHand: state.hands[player] ?? [],
+    myHand: [...(state.hands[player] ?? [])],
     myExchange: task ? { to: task.to, count: task.count } : null,
     pendingExchanges: state.exchanges.filter((t) => !t.done).map((t) => t.from),
-    received: state.received[player] ?? null,
-    scores: state.scores,
-    result: state.result,
+    received: state.received[player] ? [...state.received[player]] : null,
+    scores: { ...state.scores },
+    result: state.result ? [...state.result] : null,
     version: state.version,
     log: state.log.slice(-40),
   };

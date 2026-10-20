@@ -6,7 +6,8 @@ export const cryptoRng: Rng = (n) => randomInt(n);
 
 const BANNED = [
   'fuck', 'shit', 'bitch', 'cunt', 'dick', 'nigger', 'nigga', 'asshole',
-  'เหี้ย', 'ควย', 'หี', 'เย็ด', 'สัส', 'สัด', 'ไอ้สัตว์', 'มึง', 'กู', 'แม่ง', 'ชิบหาย', 'จัญไร',
+  // Short words like หี/สัด/กู are left out: they are parts of ordinary words (หีบ, สัดส่วน, กูเกิล).
+  'เหี้ย', 'ควย', 'เย็ด', 'สัส', 'ไอ้สัตว์', 'มึง', 'แม่ง', 'ชิบหาย', 'จัญไร',
 ];
 const BANNED_RE = new RegExp(BANNED.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi');
 

@@ -491,6 +491,7 @@ describe('finish order, roles, scores', () => {
   // Spec: "1st=king, 2nd=queen, 2nd-last=peasant (only n>=4), last=slave". Read literally, the
   // 2nd place in a 3-player game is a queen; the engine (game.ts:100 `n >= 4 && place === 1`) makes
   // them a commoner. Flagged as a spec/engine mismatch for the product owner to rule on.
+  // Intended: with 3 players there is no queen/peasant pair, so 2nd place is a commoner.
   it.fails('3 players: 2nd place is queen (literal spec)', () => {
     expect([0, 1, 2].map((i) => roleForPlace(i, 3))).toEqual(['king', 'queen', 'slave']);
   });
@@ -822,7 +823,7 @@ describe('exchange input validation', () => {
   // holdsAll() uses Array.prototype.every, which skips holes, so a sparse array of the right length
   // passes validation and `undefined` is inserted into the recipient's hand (game.ts:266 / :284).
   // JSON cannot produce holes, so this is only reachable through direct API use.
-  it.fails('rejects a sparse cards array instead of injecting undefined into a hand', () => {
+  it('rejects a sparse cards array instead of injecting undefined into a hand', () => {
     const g = nextRound(afterRound(['p0', 'p1', 'p2', 'p3']), identityRng);
     const sparse: CardId[] = [0];
     sparse.length = 2; // [0, <hole>]

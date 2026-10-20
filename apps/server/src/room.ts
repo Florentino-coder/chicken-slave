@@ -15,6 +15,7 @@ import {
 } from '@slave/engine';
 import type { ChatMessage, RoomView, SeatView } from '@slave/shared';
 import type { ServerConfig } from './config';
+import { metrics } from './metrics';
 import { cryptoRng } from './util';
 
 export interface Seat {
@@ -63,6 +64,9 @@ export class Room {
   private timers: NodeJS.Timeout[] = [];
   private chatSeq = 0;
   private destroyed = false;
+  private countedRound = 0;
+  /** Game state the current timers were set for; rescheduling the same state keeps its deadlines. */
+  private scheduledFor: GameState | null = null;
 
   constructor(
     readonly code: string,
@@ -90,6 +94,14 @@ export class Room {
 
   humans(): Seat[] {
     return this.seats.filter((s): s is Seat => !!s && !!s.guestId && !s.left);
+  }
+
+  /** Why `addHuman` would fail for this guest, without changing anything. */
+  canAdd(guestId: string): RoomError | null {
+    if (this.seatOf(guestId)) return null;
+    if (this.status !== 'lobby') return 'already_playing';
+    if (!this.seats.includes(null)) return 'room_full';
+    return null;
   }
 
   addHuman(guestId: string, name: string): RoomError | null {
@@ -281,6 +293,7 @@ export class Room {
       if (!this.seats[i]) this.seats[i] = this.makeBot('medium');
     }
     this.status = 'playing';
+    metrics.gamesStarted++;
     this.game = createGame(
       this.seats.map((s) => s!.id),
       this.settings,
@@ -294,9 +307,11 @@ export class Room {
     const seat = this.seatOf(guestId);
     if (!seat) return 'not_in_room';
     if (!this.game) return 'bad_phase';
-    if (version !== this.game.version) return 'stale';
+    // Exchanges by different players are independent, so only turn-based moves need a fresh version.
+    if (action.type !== 'exchange' && version !== this.game.version) return 'stale';
     const r = applyAction(this.game, seat.id, action);
-    if (!r.ok) return r.error;
+    // A failed exchange sent from an older view is a duplicate or late click, not a rules error.
+    if (!r.ok) return version !== this.game.version ? 'stale' : r.error;
     this.game = r.state;
     this.afterChange();
     return null;
@@ -356,10 +371,17 @@ export class Room {
       this.deadline = null;
       return;
     }
+    const now = Date.now();
+    const same = this.scheduledFor === g;
+    this.scheduledFor = g;
     if (g.phase === 'roundEnd') {
+      if (this.countedRound !== g.round) {
+        this.countedRound = g.round;
+        metrics.roundsFinished++;
+      }
       this.deadline = null;
-      this.nextRoundAt = Date.now() + this.cfg.nextRoundMs;
-      this.later(this.cfg.nextRoundMs, () => {
+      if (!same || this.nextRoundAt === null) this.nextRoundAt = now + this.cfg.nextRoundMs;
+      this.later(Math.max(0, this.nextRoundAt - now), () => {
         if (this.game !== g) return;
         this.game = nextRound(g, cryptoRng);
         this.afterChange();
@@ -369,7 +391,8 @@ export class Room {
     }
     this.nextRoundAt = null;
     const turnMs = this.cfg.turnMsOverride ?? this.settings.turnSeconds * 1000;
-    this.deadline = Date.now() + turnMs;
+    if (!same || this.deadline === null) this.deadline = now + turnMs;
+    const left = Math.max(0, this.deadline - now);
 
     const actors = g.phase === 'exchange' ? g.exchanges.filter((t) => !t.done).map((t) => t.from) : [g.turn!];
     const botActor = actors.find((id) => {
@@ -383,7 +406,7 @@ export class Room {
         this.afterChange();
       });
     }
-    this.later(turnMs, () => {
+    this.later(left, () => {
       if (this.game !== g) return;
       for (const id of actors) this.autoAct(id, false);
       this.afterChange();
@@ -414,7 +437,7 @@ export class Room {
           s
             ? {
                 seat: i,
-                guestId: s.isBot ? null : s.guestId,
+                guestId: s.isBot || s.left ? null : s.guestId,
                 name: s.name,
                 isBot: s.isBot || s.takenOver,
                 botLevel: s.isBot ? s.botLevel : undefined,

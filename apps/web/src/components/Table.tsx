@@ -138,22 +138,22 @@ export default function Table({ room }: { room: RoomView }) {
   return (
     <div className="flex h-full flex-col overflow-hidden" data-testid="table">
       {/* Top bar */}
-      <header className="flex items-center gap-2 px-3 pt-2 text-sm">
-        <button className="btn btn-ghost px-3 py-1.5" onClick={leave} aria-label="ออกจากเกม">
+      <header className="flex items-center gap-1.5 px-2 pt-2 text-sm whitespace-nowrap sm:gap-2 sm:px-3">
+        <button className="btn btn-ghost px-2.5 py-1.5" onClick={leave} aria-label="ออกจากเกม">
           ←
         </button>
-        <span className="font-mono tracking-widest text-white/70">{room.code}</span>
+        <span className="hidden font-mono tracking-widest text-white/70 sm:inline">{room.code}</span>
         <span className="text-white/70">รอบ {game.round}</span>
         {game.revolution && <span className="rounded bg-fuchsia-600 px-2 py-0.5 text-xs font-bold">⚡ ปฏิวัติ</span>}
         <span className="ml-auto flex gap-1">
-          <button className="btn btn-ghost px-3 py-1.5" onClick={() => setPanel(panel === 'log' ? 'none' : 'log')}>
-            บันทึก
+          <button className="btn btn-ghost px-2.5 py-1.5" onClick={() => setPanel(panel === 'log' ? 'none' : 'log')} aria-label="บันทึกการเล่น">
+            📜<span className="hidden sm:inline"> บันทึก</span>
           </button>
-          <button className="btn btn-ghost px-3 py-1.5" onClick={() => setPanel(panel === 'chat' ? 'none' : 'chat')}>
-            แชต
+          <button className="btn btn-ghost px-2.5 py-1.5" onClick={() => setPanel(panel === 'chat' ? 'none' : 'chat')} aria-label="แชต">
+            💬<span className="hidden sm:inline"> แชต</span>
           </button>
           <button
-            className="btn btn-ghost px-3 py-1.5"
+            className="btn btn-ghost px-2.5 py-1.5"
             aria-label={muted ? 'เปิดเสียง' : 'ปิดเสียง'}
             onClick={() => {
               setMuted(!muted);
@@ -162,7 +162,7 @@ export default function Table({ room }: { room: RoomView }) {
           >
             {muted ? '🔇' : '🔊'}
           </button>
-          <button className="btn btn-ghost px-3 py-1.5" onClick={() => setRules(true)} aria-label="กติกา">
+          <button className="btn btn-ghost px-2.5 py-1.5" onClick={() => setRules(true)} aria-label="กติกา">
             ?
           </button>
         </span>
@@ -257,7 +257,7 @@ export default function Table({ room }: { room: RoomView }) {
 
       {/* Hand */}
       <section className="overflow-x-auto px-3 pt-6 pb-2" data-testid="hand">
-        <div className="mx-auto flex w-max -space-x-7 sm:-space-x-5">
+        <div className="mx-auto flex w-max -space-x-6 sm:-space-x-5">
           {game.myHand.map((c) => (
             <PlayingCard
               key={c}
@@ -305,7 +305,10 @@ export default function Table({ room }: { room: RoomView }) {
             className="fixed inset-y-0 right-0 z-30 flex w-[min(360px,90vw)] flex-col gap-2 bg-slate-950/95 p-3"
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">{panel === 'log' ? 'บันทึกการเล่น' : 'แชต'}</h2>
+              <h2 className="font-semibold">
+                {panel === 'log' ? 'บันทึกการเล่น' : 'แชต'}
+                <span className="ml-2 font-mono text-sm tracking-widest text-white/60">ห้อง {room.code}</span>
+              </h2>
               <button className="btn btn-ghost px-3 py-1" onClick={() => setPanel('none')}>
                 ✕
               </button>

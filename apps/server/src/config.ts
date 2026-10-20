@@ -15,6 +15,8 @@ export interface ServerConfig {
   /** Overrides settings.turnSeconds when set (tests). */
   turnMsOverride: number | null;
   guestPerMinute: number;
+  /** Express trust-proxy hops; only set behind a real proxy, or X-Forwarded-For can spoof IPs. */
+  trustProxy: number;
   /** Directory with the built web app to serve, if any. */
   staticDir: string | null;
 }
@@ -40,6 +42,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     roomIdleMs: num(env.ROOM_IDLE_MS, 10 * 60_000),
     turnMsOverride: env.TURN_MS ? Number(env.TURN_MS) : null,
     guestPerMinute: num(env.GUEST_PER_MINUTE, 10),
+    trustProxy: num(env.TRUST_PROXY, production ? 1 : 0),
     staticDir: env.STATIC_DIR ?? null,
     ...overrides,
   };

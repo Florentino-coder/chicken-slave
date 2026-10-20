@@ -240,6 +240,17 @@ describe('rooms, lobby and game authority', () => {
     expect(d.room?.code).toBe(mine);
   });
 
+  it('a failed join mid-game must not abandon the running game to a bot', async () => {
+    const [a, p2, p3, d] = [await player(b, 'A'), await player(b, 'B'), await player(b, 'C'), await player(b, 'D')];
+    const full = await setupRoom(a, [p2, p3], { settings: { playerCount: 3 } });
+    const mine = (await d.emit('room:create', {})).data.code;
+    expect(await d.emit('room:start')).toEqual({ ok: true });
+    await d.until(() => d.game, 2000);
+    expect(await d.emit('room:join', { code: full })).toEqual({ ok: false, error: 'room_full' });
+    expect(d.room?.code).toBe(mine);
+    expect(b.server.manager.rooms.get(mine)?.seatOf(d.guestId)).toBeDefined();
+  });
+
   it('already_playing, not_host, not_ready and start filling bots', async () => {
     const [a, p2, late] = [await player(b, 'A'), await player(b, 'B'), await player(b, 'Late')];
     const c = await a.emit('room:create', {});

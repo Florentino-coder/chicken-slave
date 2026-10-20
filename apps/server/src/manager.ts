@@ -1,6 +1,7 @@
 import type { Server } from 'socket.io';
 import type { Settings } from '@slave/engine';
 import type { ServerConfig } from './config';
+import { metrics } from './metrics';
 import { Room } from './room';
 import { randomRoomCode } from './util';
 
@@ -44,6 +45,7 @@ export class RoomManager {
       onAbandoned: () => this.deleteRoom(code),
     });
     this.rooms.set(code, room);
+    metrics.roomsCreated++;
     return room;
   }
 
@@ -59,7 +61,12 @@ export class RoomManager {
   /** Seats a guest, leaving any previous room first. */
   join(room: Room, guestId: string, name: string): string | null {
     const current = this.roomOf(guestId);
-    if (current && current !== room) current.leave(guestId);
+    if (current && current !== room) {
+      // Check the target first so a failed join never costs the guest their current seat.
+      const blocked = room.canAdd(guestId);
+      if (blocked) return blocked;
+      current.leave(guestId);
+    }
     this.leaveQueue(guestId);
     const err = room.addHuman(guestId, name);
     if (err) {
@@ -132,6 +139,7 @@ export class RoomManager {
       this.queueTimer = null;
       this.queueStartsAt = null;
     }
+    metrics.quickMatches++;
     const room = this.createRoom(entries[0].guestId, { playerCount: QUICK_SIZE }, { quick: true });
     for (const e of entries) {
       this.io.to(`g:${e.guestId}`).emit('quick:status', { queued: false, size: 0, startsAt: null });

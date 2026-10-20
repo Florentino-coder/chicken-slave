@@ -4,3 +4,4 @@ coverage
 .env
 test-results
 playwright-report
+e2e/screenshots

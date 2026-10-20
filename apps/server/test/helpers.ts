@@ -241,6 +241,7 @@ export interface AutoPlayStats {
   stale: number;
   errors: string[];
   exchanges: number;
+  rateLimited: number;
   stop(): void;
 }
 
@@ -259,6 +260,7 @@ export function autoPlay(
     stale: 0,
     errors: [],
     exchanges: 0,
+    rateLimited: 0,
     stop: () => {
       stopped = true;
       p.s.off('game:state', tick);
@@ -275,7 +277,14 @@ export function autoPlay(
     if (!a) return;
     const ev = a.type === 'play' ? 'game:play' : a.type === 'pass' ? 'game:pass' : 'exchange:give';
     try {
-      const r = await p.emit(ev, { ...('cards' in a ? { cards: a.cards } : {}), version: v.version });
+      const payload = { ...('cards' in a ? { cards: a.cards } : {}), version: v.version };
+      let r = await p.emit(ev, payload);
+      // Bots-as-clients act far faster than humans; back off on the per-socket event limiter.
+      while (!r.ok && r.error === 'rate_limited' && !stopped) {
+        stats.rateLimited++;
+        await sleep(150);
+        r = await p.emit(ev, payload);
+      }
       if (r.ok) {
         stats.moves++;
         if (a.type === 'exchange') stats.exchanges++;

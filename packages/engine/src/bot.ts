@@ -57,7 +57,10 @@ export function botAction(state: GameState, player: string, level: BotLevel = 'm
   if (state.phase !== 'playing' || state.turn !== player) return null;
 
   const hand = state.hands[player];
-  const moves = movesFor(state, player);
+  // With noTwoFinish, going out on a 2 is a penalty: avoid it unless nothing else is legal.
+  const penalized = (m: Combo) => state.settings.noTwoFinish && m.size === hand.length && m.rank === RANK_TWO;
+  const all = movesFor(state, player);
+  const moves = all.some((m) => !penalized(m)) ? all.filter((m) => !penalized(m)) : all;
   if (moves.length === 0) return state.pile ? { type: 'pass' } : null;
 
   const byStrength = (a: Combo, b: Combo) => power(state, a.high) - power(state, b.high);

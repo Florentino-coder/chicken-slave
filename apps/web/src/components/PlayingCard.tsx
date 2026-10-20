@@ -14,7 +14,7 @@ export default function PlayingCard({ id, selected, highlight, small, onClick, d
   const red = suitOf(id) === 1 || suitOf(id) === 2;
   const rank = RANK_LABELS[rankOf(id)];
   const suit = SUIT_SYMBOLS[suitOf(id)];
-  const size = small ? 'h-16 w-11 text-sm' : 'h-24 w-16 text-base sm:h-28 sm:w-20 sm:text-lg';
+  const size = small ? 'h-16 w-11 text-sm' : 'h-[72px] w-12 text-sm sm:h-28 sm:w-20 sm:text-lg';
   return (
     <motion.button
       type="button"
@@ -38,7 +38,7 @@ export default function PlayingCard({ id, selected, highlight, small, onClick, d
         <br />
         {suit}
       </span>
-      <span className={`absolute inset-0 flex items-center justify-center ${small ? 'text-xl' : 'text-3xl'}`}>{suit}</span>
+      <span className={`absolute inset-0 flex items-center justify-center ${small ? 'text-xl' : 'text-2xl sm:text-3xl'}`}>{suit}</span>
     </motion.button>
   );
 }
