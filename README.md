@@ -92,9 +92,9 @@ The free plan sleeps after 15 minutes without traffic; the first visit after tha
 
 1. Deploy Render as in option A and note its URL.
 2. In `vercel.json`, set the `/api` rewrite destination to that Render URL.
-3. Vercel: **Add New > Project**, import this repository. Settings come from `vercel.json`.
+3. Vercel: **Add New > Project**, import this repository and pick the **web** (Vite) project, root `apps/web`. Settings come from `apps/web/vercel.json`. (Importing the repository root uses the root `vercel.json` instead; both point `/api` at Render.)
 4. Vercel environment variable: `VITE_SOCKET_URL=https://<your-render-url>`. Deploy.
-5. Render environment: `ALLOWED_ORIGINS=https://<your-vercel-domain>` and `TRUST_PROXY=2`. Redeploy.
+5. Render environment: `ALLOWED_ORIGINS=https://<your-vercel-domain>,https://<project>-*.vercel.app` (the second entry covers preview deployments) and `TRUST_PROXY=2`. Redeploy.
 
 `/api` goes through Vercel so the guest cookie stays first-party; the socket connects straight to Render with the guest token, because Vercel cannot proxy WebSockets.
 

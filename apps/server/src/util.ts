@@ -42,6 +42,18 @@ export function randomRoomCode(): string {
   return s;
 }
 
+/**
+ * Origin allowlist matcher. Entries are exact origins, or contain '*' standing for one DNS label,
+ * e.g. https://chicken-slave-*.vercel.app for Vercel preview deployments.
+ */
+export function originMatcher(allowed: string[]): (origin: string) => boolean {
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const patterns = allowed.map((a) =>
+    a.includes('*') ? new RegExp(`^${a.split('*').map(escape).join('[a-z0-9-]+')}$`, 'i') : a,
+  );
+  return (origin) => patterns.some((p) => (typeof p === 'string' ? p === origin : p.test(origin)));
+}
+
 /** Token bucket: `capacity` burst, refilled at `perSecond`. */
 export class RateLimiter {
   private buckets = new Map<string, { tokens: number; at: number }>();

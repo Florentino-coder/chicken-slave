@@ -10,7 +10,8 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
-      # Comma-separated web origins allowed to open sockets, e.g. https://chicken-slave.vercel.app
+      # Comma-separated web origins allowed to open sockets. One * matches a DNS label, e.g.
+      # https://chicken-slave.vercel.app,https://chicken-slave-*.vercel.app
       # Leave empty when players use the Render URL directly.
       - key: ALLOWED_ORIGINS
         sync: false

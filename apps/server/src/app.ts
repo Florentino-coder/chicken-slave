@@ -9,7 +9,7 @@ import { TOKEN_COOKIE, TOKEN_TTL_SECONDS, issueToken, newGuestId, verifyToken } 
 import { ServerConfig, loadConfig } from './config';
 import { RoomManager } from './manager';
 import { metrics } from './metrics';
-import { RateLimiter, cleanChat, cleanName, randomGuestName } from './util';
+import { RateLimiter, cleanChat, cleanName, originMatcher, randomGuestName } from './util';
 
 interface SocketData {
   guestId: string;
@@ -22,10 +22,11 @@ export function createApp(overrides: Partial<ServerConfig> = {}) {
   const cfg = loadConfig(overrides);
   const app = express();
   const http = createServer(app);
+  const originAllowed = originMatcher(cfg.allowedOrigins);
   const io = new Server(http, {
     cors: cfg.production
       ? cfg.allowedOrigins.length
-        ? { origin: cfg.allowedOrigins, credentials: true }
+        ? { origin: (o: string | undefined, cb: (e: Error | null, ok?: boolean) => void) => cb(null, !o || originAllowed(o)), credentials: true }
         : undefined
       : { origin: true, credentials: true },
     // Browsers do not apply CORS to WebSocket upgrades, so check the origin ourselves in production.
@@ -38,7 +39,7 @@ export function createApp(overrides: Partial<ServerConfig> = {}) {
       } catch {
         /* malformed Origin header */
       }
-      done(null, !cfg.production || !origin || sameHost || cfg.allowedOrigins.includes(origin));
+      done(null, !cfg.production || !origin || sameHost || originAllowed(origin));
     },
     maxHttpBufferSize: 16_000,
     pingInterval: 10_000,
