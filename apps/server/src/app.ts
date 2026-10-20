@@ -143,8 +143,8 @@ export function createApp(overrides: Partial<ServerConfig> = {}) {
       });
     }
 
+    const myRoom = () => manager.roomOf(guestId);
     /** Runs fn against the guest's room. Handlers return null on success, so '??' cannot be used. */
-    /** Runs  against the guest's room; success is , so  cannot be used here. */
     const inRoom = (fn: (r: NonNullable<ReturnType<typeof myRoom>>) => string | null) => {
       const r = myRoom();
       return r ? fn(r) : 'not_in_room';

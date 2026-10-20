@@ -1,0 +1,70 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-felt: #0b5d3b;
+  --color-felt-dark: #073d27;
+  --color-ink: #0f172a;
+  --color-gold: #f5c542;
+  --font-sans: 'Noto Sans Thai', 'Sarabun', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at center, var(--color-felt) 0%, var(--color-felt-dark) 75%);
+  color: #f8fafc;
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+.panel {
+  background: rgb(0 0 0 / 0.28);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 1rem;
+  backdrop-filter: blur(6px);
+}
+
+.btn {
+  border-radius: 0.75rem;
+  padding: 0.6rem 1.1rem;
+  font-weight: 600;
+  transition: transform 0.08s, opacity 0.15s, background 0.15s;
+  touch-action: manipulation;
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--color-gold);
+  color: #1f1500;
+}
+.btn-ghost {
+  background: rgb(255 255 255 / 0.1);
+  color: #fff;
+}
+.btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.input {
+  width: 100%;
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  background: rgb(255 255 255 / 0.95);
+  color: var(--color-ink);
+  outline: none;
+}
+.input:focus {
+  box-shadow: 0 0 0 3px rgb(245 197 66 / 0.6);
+}
